@@ -76,6 +76,10 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
 .srow .st{display:flex;justify-content:space-between;font-weight:700}
 .srow input[type=range]{width:100%;margin:0;accent-color:#4aa3ff}
 .srow small{color:#9fb4d0}
+#voidov{position:fixed;inset:0;z-index:8500;background:#000;opacity:0;pointer-events:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(8px,2.5vh,26px)}
+#voidsig{width:min(46vmin,380px);height:auto;opacity:0;transition:opacity 1.8s;animation:voidspin 45s linear infinite;filter:drop-shadow(0 0 18px rgba(170,200,255,.55))}
+@keyframes voidspin{to{transform:rotate(360deg)}}
+#voidtx{min-height:calc(5 * 1.7em);text-align:center;font:700 clamp(11px,2.8vmin,19px) Georgia,'Times New Roman',serif;letter-spacing:.28em;color:#dfe8ff;text-shadow:0 0 10px rgba(150,180,255,.6);line-height:1.7;transition:opacity 1.2s}
 #mpbar{position:fixed;top:calc(10px + env(safe-area-inset-top,0px));left:12px;z-index:31;display:flex;gap:8px}
 #mpbar button,#chatsend,#emoteclose{font:700 13px system-ui,sans-serif;color:var(--tx);background:var(--ui);border:2px solid var(--ui-b);border-radius:12px;padding:8px 12px;cursor:pointer}
 #chatwrap{position:fixed;top:calc(56px + env(safe-area-inset-top,0px));left:12px;z-index:31;width:min(58vw,420px);display:flex;flex-direction:column;gap:6px;pointer-events:none}
@@ -88,7 +92,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
 #emotepanel{position:fixed;top:calc(56px + env(safe-area-inset-top,0px));left:12px;z-index:32;width:230px;min-height:110px;background:var(--ui);border:2px solid var(--ui-b);border-radius:14px;padding:10px;color:var(--tx);font:600 13px system-ui,sans-serif}
 #emotepanel .eh{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
 #emotepanel .eb{opacity:.6;text-align:center;padding:18px 0}
-#fsbtn,#mpjoin,#mpleave{font:inherit;color:#fff;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);border-radius:10px;padding:8px 12px;cursor:pointer;margin:4px 6px 0 0}
+#fsbtn,#mpcreate,#mpjoin,#mpcopy,#mpleave{font:inherit;color:#fff;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);border-radius:10px;padding:8px 12px;cursor:pointer;margin:4px 6px 0 0}
 #sreset{align-self:flex-start;font:inherit;color:#fff;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);border-radius:10px;padding:8px 12px;cursor:pointer}
 
 #c4t{position:fixed;left:50%;transform:translateX(-50%);top:calc(80px + env(safe-area-inset-top,0px));color:#ff4a3a;font-weight:800;font-size:20px;letter-spacing:2px;font-variant-numeric:tabular-nums;text-shadow:0 1px 4px #000;pointer-events:none;display:none;z-index:7}
@@ -213,12 +217,13 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
       <div class="srow"><div class="st"><span>Sensitivitas kamera</span><span id="sensv">1.0x</span></div><input type="range" id="sensr" min="0.2" max="3" step="0.05" value="1"><small>Seberapa cepat kamera berputar saat layar digeser (default 1.0x).</small></div>
       <div class="srow"><div class="st"><span>Volume efek suara</span><span id="sfxv">70%</span></div><input type="range" id="sfxr" min="0" max="100" step="1" value="70"><small>Langkah, lompat, slide, wallkick, pintu, angin (0 = mati). Musik diatur di Console.</small></div>
       <div class="srow"><div class="st"><span>LAYAR PENUH</span><span id="fsst">OFF</span></div><button id="fsbtn">Layar Penuh (sembunyikan bar browser)</button><small>Menghilangkan address bar. Otomatis aktif saat layar pertama kali disentuh (di HP). Untuk mematikannya tekan tombol ini lagi.</small></div>
-      <div class="srow"><div class="st"><span>MULTIPLAYER</span><span id="mpst">OFFLINE</span></div><button id="mpjoin">Gabung / Buat Room</button><button id="mpleave" hidden>Keluar Room (solo)</button><small>Pemain dengan kode room yang sama masuk ke dunia yang sama dan saling terlihat. Props, pintu &amp; entity tetap lokal per pemain.</small></div>
+      <div class="srow"><div class="st"><span>MULTIPLAYER</span><span id="mpst">OFFLINE</span></div><button id="mpcreate">Buat Room</button><button id="mpjoin">Join Room</button><button id="mpcopy" hidden>Salin Kode</button><button id="mpleave" hidden>Keluar Room (solo)</button><small>Buat Room = dapat kode acak untuk dibagikan. Join Room = masukkan kode dari temanmu. Pemain dengan kode yang sama masuk ke dunia yang sama dan saling terlihat. Props, pintu &amp; entity tetap lokal per pemain.</small></div>
       <button id="sreset">Reset ke default</button>
     </div>
   </div>
 </div>
 <div id="dot"></div>
+<div id="voidov"><img id="voidsig" alt=""><div id="voidtx"></div></div>
 <div id="mpui">
   <div id="mpbar"><button id="chatbtn">CHAT</button><button id="emotebtn">EMOTE</button></div>
   <div id="chatwrap"><div id="chatbox" hidden><input id="chatin" maxlength="120" placeholder="Ketik pesan..." autocomplete="off"><button id="chatsend">Kirim</button></div><div id="chatlog"></div></div>
@@ -2270,7 +2275,7 @@ let timerEnd=0,timerOn=false,timerShown=-1;
 function startTimer(now){timerEnd=now+TIMER_TOTAL*1000;timerOn=true;timerShown=-1;timerEl.classList.remove('low','end');timerEl.classList.add('run')}
 function resetTimer(){timerOn=false;timerShown=-1;timerEl.textContent=Math.floor(TIMER_TOTAL/60)+':'+String(TIMER_TOTAL%60).padStart(2,'0');timerEl.classList.remove('run','low','end')}
 let safeIdx=-1,safeDone=false,safeTrack=-1;
-function safeStop(){safeTrack=cur;au.pause();try{au.currentTime=0}catch(e){}syncUI()}
+function safeStop(){safeTrack=cur;if(!au.paused){try{sfx.tvStatic()}catch(e){}}au.pause();try{au.currentTime=0}catch(e){}syncUI()}
 function safeResume(){playIdx(safeTrack>=0?safeTrack:0)}
 function updTimer(now){
   if(!timerOn)return;
@@ -2306,6 +2311,43 @@ function stairPortal(R){
   player.position.z=-(RSTART(R.i)+RLEN(R.i)+3);   // tembus pintu dasar -> awal ruangan berikutnya (lantai tinggi 0)
   pPX=player.position.x;pPZ=player.position.z;
   setTimeout(()=>{fadeEl.style.transition='opacity .45s';fadeEl.style.opacity='0'},90);
+}
+// ===== LORE: jatuh ke Void (tidak ada lantai) -> layar makin gelap sampai hitam -> Sigil + bisikan -> mulai lagi =====
+const VOID_LINES=['YOU CANT ESCAPE','THERE IS NO HOPE','FAILURE AFTER FAILURE','THE WAY OUT IS JUST AN ILLUSION','STAY HERE, THIS IS YOUR HELL'];
+const voidOv=document.getElementById('voidov'),voidSig=document.getElementById('voidsig'),voidTx=document.getElementById('voidtx');
+voidSig.src=SIGIL_IMG;
+const voidS={on:false,t:0,ph:0,li:0,ci:0,w:0,el:null,lines:[VOID_LINES[0]]};
+function voidBlip(){try{const A=gAC(),o=A.createOscillator(),g=A.createGain(),T=A.currentTime;o.type='sine';o.frequency.value=85+Math.random()*35;g.gain.setValueAtTime(0.05,T);g.gain.exponentialRampToValueAtTime(0.0001,T+0.09);o.connect(g);g.connect(A.destination);o.start(T);o.stop(T+0.1)}catch(e){}}
+function voidNewLine(){voidS.el=document.createElement('div');voidTx.appendChild(voidS.el)}
+function voidStart(){
+  const S=voidS;S.on=true;S.t=0;S.ph=0;S.lines=[VOID_LINES[(Math.random()*VOID_LINES.length)|0]];   // satu kalimat acak per jatuh
+  voidTx.innerHTML='';voidTx.style.opacity=1;voidSig.style.opacity=0;
+  voidOv.style.transition='none';voidOv.style.opacity=0;
+  au.pause();try{au.currentTime=0}catch(e){}syncUI();   // lagu langsung berhenti tiba-tiba
+  try{sfx.whoosh()}catch(e){}
+}
+function updVoid(dt){
+  const S=voidS;S.t+=dt;if(vel.y<-55)vel.y=-55;   // jatuh terus tanpa dasar
+  if(S.ph===0){   // makin lama makin gelap sampai hitam total
+    const k=Math.min(1,S.t/5);voidOv.style.opacity=Math.pow(k,1.3).toFixed(3);
+    if(k>=1){S.ph=1;S.t=0;voidSig.style.opacity=1}
+  }else if(S.ph===1){   // Sigil muncul
+    if(S.t>=2.4){S.ph=2;S.t=0;S.li=0;S.ci=0;S.w=0;voidNewLine()}
+  }else if(S.ph===2){   // teks diketik huruf demi huruf, seperti sedang berbicara
+    S.w-=dt;
+    while(S.w<=0&&S.ph===2){
+      const line=S.lines[S.li];
+      if(S.ci<line.length){const ch=line[S.ci++];S.el.textContent+=ch;if(ch!==' ')voidBlip();S.w+=ch===','?0.5:0.075}
+      else{S.li++;if(S.li>=S.lines.length){S.ph=3;S.t=0}else{voidNewLine();S.w+=1.1}}
+    }
+  }else if(S.ph===3){
+    if(S.t>=3.5){S.ph=4;S.t=0;voidTx.style.opacity=0;voidSig.style.opacity=0}
+  }else if(S.ph===4){
+    if(S.t>=2){
+      restartToLobby();voidTx.innerHTML='';voidTx.style.opacity=1;
+      voidOv.style.transition='opacity 1.5s';voidOv.style.opacity=0;S.on=false;
+    }
+  }
 }
 function updMap(dt,now){
   const pp=player.position,tp=-pp.z;
@@ -2375,7 +2417,9 @@ function updMap(dt,now){
     const l=e[1];pl.position.set(l[0],l[1]-0.6,l[2]);
     pl.intensity=0;   // lampu ruangan dimatikan; hanya lentera pemain yang menyala
   });
-  if(pp.y<-40){pp.set(0,0.1,-(RSTART(cur)+8));vel.set(0,0,0)}   // jatuh keluar -> balik ke awal ruangan
+  if(voidS.on)updVoid(dt);
+  else if(!dead&&pp.y<-12&&!(ROOMS.get(cur)&&ROOMS.get(cur).pit))voidStart();   // jatuh ke Void: tidak ada lantai
+  else if(pp.y<-40){pp.set(0,0.1,-(RSTART(cur)+8));vel.set(0,0,0)}   // cadangan (lubang tangga / mati): balik ke awal ruangan
 }
 
 
@@ -3318,6 +3362,15 @@ function makeSfx(factory){
       tone('sine',150,40,0.35,0.5,0.01);
       tone('sawtooth',110,60,0.15,0.12);
     },
+    tvStatic(){   // TV rusak: noise kasar terpotong-potong + dengung, cukup keras supaya lagu yang berhenti tersamar
+      if(!C||!nb)return;const t=C.currentTime,dur=1.1,s=C.createBufferSource();s.buffer=nb;s.loop=true;
+      const hp=C.createBiquadFilter();hp.type='highpass';hp.frequency.value=700;
+      const g=C.createGain();g.gain.setValueAtTime(0,t);
+      for(let x=0;x<dur;){const seg=0.015+Math.random()*0.07,on=Math.random()<0.8;g.gain.setValueAtTime(on?(0.35+Math.random()*0.45)*(1-0.55*x/dur):0.02,t+x);x+=seg}
+      g.gain.setValueAtTime(0,t+dur);
+      s.connect(hp);hp.connect(g);g.connect(master);s.start(t,Math.random()*0.5);s.stop(t+dur+0.05);
+      tone('square',118,104,0.5,0.14);tone('sawtooth',3200,2300,0.35,0.05,0.04);noise('bandpass',1200,300,1.2,0.25,0.5,0.002,0.02);
+    },
     squelch(){noise('lowpass',420,90,0.9,0.3,0.7,0.01);tone('sine',140,60,0.25,0.25)},   // injak Tarred
     suck(){noise('bandpass',1400,120,0.8,1.5,0.9,0.05);tone('sawtooth',110,28,1.4,0.3);tone('sine',70,25,1.5,0.4)},   // disedot Tarred
     door(v){if(v<=0.02)return;noise('lowpass',260,120,0.9,0.6,0.9*v,0.05);tone('sawtooth',70,115,0.5,0.14*v)},
@@ -3453,21 +3506,35 @@ requestAnimationFrame(tick);
   const g$=id=>document.getElementById(id);
   const st=g$('mpst'),hud=g$('mphud'),jb=g$('mpjoin'),lb=g$('mpleave');
   const getCfg=()=>{if(FB_CFG.apiKey&&FB_CFG.databaseURL)return FB_CFG;try{const t=localStorage.getItem('dvg_fbcfg');return t?JSON.parse(t):null}catch(e){return null}};
-  jb.addEventListener('click',()=>{
-    let c=getCfg();
-    if(!c||!c.databaseURL){
-      const t=prompt('Tempel firebaseConfig dari Firebase Console (Project settings > Your apps). Harus ada databaseURL.');if(!t)return;
-      try{c=(new Function('return ('+t.replace(/^[^{]*/,'').replace(/[^}]*$/,'')+')'))();if(!c.apiKey||!c.databaseURL)throw 0;localStorage.setItem('dvg_fbcfg',JSON.stringify(c))}
-      catch(e){alert('Config tidak valid / databaseURL kosong.');return}
-    }
-    const code=prompt('Kode room (teman pakai kode yang sama = dunia sama):',MP.code||'');if(!code)return;
-    const nm=prompt('Nama kamu:',MP.name)||MP.name;try{localStorage.setItem('dvg_name',nm)}catch(e){}
-    location.search='?room='+encodeURIComponent(code)+'&name='+encodeURIComponent(nm);
+  const crb=g$('mpcreate'),cpb=g$('mpcopy');
+  function ensureCfg(){
+    let c=getCfg();if(c&&c.databaseURL)return c;
+    const t=prompt('Tempel firebaseConfig dari Firebase Console (Project settings > Your apps). Harus ada databaseURL.');if(!t)return null;
+    try{c=(new Function('return ('+t.replace(/^[^{]*/,'').replace(/[^}]*$/,'')+')'))();if(!c.apiKey||!c.databaseURL)throw 0;localStorage.setItem('dvg_fbcfg',JSON.stringify(c));return c}
+    catch(e){alert('Config tidak valid / databaseURL kosong.');return null}
+  }
+  function askName(){const nm=(prompt('Nama kamu:',MP.name)||MP.name).trim().slice(0,14)||MP.name;try{localStorage.setItem('dvg_name',nm)}catch(e){}return nm}
+  const goRoom=(code,nm)=>{location.search='?room='+encodeURIComponent(code)+'&name='+encodeURIComponent(nm)};
+  crb.addEventListener('click',()=>{   // buat room baru: kode acak 5 karakter untuk dibagikan ke teman
+    if(!ensureCfg())return;const nm=askName(),A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let code='';for(let i=0;i<5;i++)code+=A[(Math.random()*A.length)|0];
+    goRoom(code,nm);
+  });
+  jb.addEventListener('click',async()=>{   // join room teman: cek dulu apakah room itu ada pemainnya
+    const c=ensureCfg();if(!c)return;
+    const code=(prompt('Masukkan kode room dari temanmu:','')||'').trim().toUpperCase().replace(/[^A-Z0-9_-]/g,'').slice(0,20);if(!code)return;
+    const nm=askName();
+    try{
+      if(!window.firebase)throw new Error('sdk');
+      const app=firebase.apps.length?firebase.app():firebase.initializeApp(c);
+      const snap=await Promise.race([firebase.database(app).ref('dvg/'+code+'/players').once('value'),new Promise((_,rj)=>setTimeout(()=>rj(new Error('timeout')),7000))]);
+      if(!snap.exists()&&!confirm('Room "'+code+'" belum ada pemainnya. Pastikan kodenya benar dan temanmu sudah membuat room. Tetap masuk?'))return;
+    }catch(e){if(!confirm('Tidak bisa mengecek room (internet / Firebase). Tetap masuk dengan kode '+code+'?'))return}
+    goRoom(code,nm);
   });
   lb.addEventListener('click',()=>{location.href=location.pathname});
 
   // ---------- UI: CHAT + EMOTE ----------
-  const mpui=g$('mpui'),chatbtn=g$('chatbtn'),emobtn=g$('emotebtn'),log=g$('chatlog'),box=g$('chatbox'),inp=g$('chatin'),csend=g$('chatsend'),ep=g$('emotepanel');
+  const mpui=g$('mpui'),chatbtn=g$('chatbtn'),emobtn=g$('emotebtn'),log=g$('chatlog'),cbox=g$('chatbox'),inp=g$('chatin'),csend=g$('chatsend'),ep=g$('emotepanel');
   ['pointerdown','pointermove','pointerup','touchstart','touchmove','touchend','mousedown','mouseup','click'].forEach(ev=>mpui.addEventListener(ev,e=>e.stopPropagation(),{passive:true}));
   ['keydown','keyup','keypress'].forEach(ev=>inp.addEventListener(ev,e=>e.stopPropagation()));
   let chatRef=null;
@@ -3477,10 +3544,10 @@ requestAnimationFrame(tick);
     d.appendChild(document.createTextNode(text));log.appendChild(d);
     while(log.children.length>30)log.removeChild(log.firstChild);
   }
-  setInterval(()=>{const open=!box.hidden,n=Date.now();for(const c of log.children)c.style.opacity=(open||n-c.dataset.t<10000)?1:0},400);
-  function openChat(){ep.hidden=true;box.hidden=false;try{document.exitPointerLock&&document.exitPointerLock()}catch(e){}inp.focus()}
-  function closeChat(){box.hidden=true;inp.blur()}
-  chatbtn.addEventListener('click',()=>{box.hidden?openChat():closeChat()});
+  setInterval(()=>{const open=!cbox.hidden,n=Date.now();for(const c of log.children)c.style.opacity=(open||n-c.dataset.t<10000)?1:0},400);
+  function openChat(){ep.hidden=true;cbox.hidden=false;try{document.exitPointerLock&&document.exitPointerLock()}catch(e){}inp.focus()}
+  function closeChat(){cbox.hidden=true;inp.blur()}
+  chatbtn.addEventListener('click',()=>{cbox.hidden?openChat():closeChat()});
   emobtn.addEventListener('click',()=>{ep.hidden=!ep.hidden;if(!ep.hidden)closeChat()});
   g$('emoteclose').addEventListener('click',()=>{ep.hidden=true});
   function sendChat(){
@@ -3490,10 +3557,11 @@ requestAnimationFrame(tick);
   }
   csend.addEventListener('click',sendChat);
   inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();sendChat()}else if(e.key==='Escape')closeChat()});
-  addEventListener('keydown',e=>{if(e.code==='Enter'&&!e.repeat&&document.activeElement!==inp&&box.hidden){e.preventDefault();openChat()}});
+  addEventListener('keydown',e=>{if(e.code==='Enter'&&!e.repeat&&document.activeElement!==inp&&cbox.hidden){e.preventDefault();openChat()}});
 
   if(!MP.code){st.textContent='OFFLINE';return}
-  lb.hidden=false;jb.textContent='Ganti Room';
+  lb.hidden=false;cpb.hidden=false;
+  cpb.addEventListener('click',()=>{try{navigator.clipboard.writeText(MP.code).then(()=>addMsg('SISTEM','Kode room '+MP.code+' disalin. Bagikan ke teman!',true),()=>prompt('Salin kode room:',MP.code))}catch(e){prompt('Salin kode room:',MP.code)}});
   const cfg=getCfg();
   if(!cfg||!window.firebase){st.textContent='ERROR';alert(!window.firebase?'Firebase SDK gagal dimuat (cek internet).':'Firebase config belum diisi.');return}
   let db;try{firebase.initializeApp(cfg);db=firebase.database()}catch(e){st.textContent='ERROR';alert('Firebase gagal init: '+e.message);return}
@@ -3502,7 +3570,8 @@ requestAnimationFrame(tick);
   me.onDisconnect().remove();
   chatRef=db.ref(root+'/chat');
   chatRef.limitToLast(20).on('child_added',s=>{const v=s.val();if(!v||!v.m)return;if(Date.now()-(+v.t||0)>120000)return;addMsg(String(v.n||'?').slice(0,14),String(v.m).slice(0,120))});
-  addMsg('SISTEM','Masuk room '+MP.code+' sebagai '+MP.name,true);
+  addMsg('SISTEM','Masuk room '+MP.code+' sebagai '+MP.name+'. Bagikan kode ini ke temanmu (MENU > SETTING > Salin Kode).',true);
+  db.ref('.info/connected').on('value',s=>{if(s.val()){me.onDisconnect().remove();try{lastStr=''}catch(e){}}});   // sambung ulang setelah putus: daftar ulang hapus-otomatis & kirim pose lagi
 
   // ---------- pemain lain: model sama dengan pemain, pose penuh dari jaringan ----------
   const NP=49,QO=[9,16,23,30,37,44],MPDOORS={},sentD=new WeakSet(),R=new Map();
