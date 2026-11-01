@@ -2,6 +2,9 @@
 <html lang="id">
 <head>
 <meta charset="utf-8">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#000000">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>Divergent</title>
 <style>
@@ -73,6 +76,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
 .srow .st{display:flex;justify-content:space-between;font-weight:700}
 .srow input[type=range]{width:100%;margin:0;accent-color:#4aa3ff}
 .srow small{color:#9fb4d0}
+#fsbtn,#mpjoin,#mpleave{font:inherit;color:#fff;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);border-radius:10px;padding:8px 12px;cursor:pointer;margin:4px 6px 0 0}
 #sreset{align-self:flex-start;font:inherit;color:#fff;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);border-radius:10px;padding:8px 12px;cursor:pointer}
 
 #c4t{position:fixed;left:50%;transform:translateX(-50%);top:calc(80px + env(safe-area-inset-top,0px));color:#ff4a3a;font-weight:800;font-size:20px;letter-spacing:2px;font-variant-numeric:tabular-nums;text-shadow:0 1px 4px #000;pointer-events:none;display:none;z-index:7}
@@ -196,11 +200,14 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
       <div class="srow"><div class="st"><span>FOV</span><span id="fovv">70</span></div><input type="range" id="fovr" min="50" max="110" step="1" value="70"><small>Sudut pandang kamera (default 70). Efek kecepatan tetap menambah FOV sedikit.</small></div>
       <div class="srow"><div class="st"><span>Sensitivitas kamera</span><span id="sensv">1.0x</span></div><input type="range" id="sensr" min="0.2" max="3" step="0.05" value="1"><small>Seberapa cepat kamera berputar saat layar digeser (default 1.0x).</small></div>
       <div class="srow"><div class="st"><span>Volume efek suara</span><span id="sfxv">70%</span></div><input type="range" id="sfxr" min="0" max="100" step="1" value="70"><small>Langkah, lompat, slide, wallkick, pintu, angin (0 = mati). Musik diatur di Console.</small></div>
+      <div class="srow"><div class="st"><span>LAYAR PENUH</span><span id="fsst">OFF</span></div><button id="fsbtn">Layar Penuh (sembunyikan bar browser)</button><small>Menghilangkan address bar. Otomatis aktif saat layar pertama kali disentuh (di HP). Untuk mematikannya tekan tombol ini lagi.</small></div>
+      <div class="srow"><div class="st"><span>MULTIPLAYER</span><span id="mpst">OFFLINE</span></div><button id="mpjoin">Gabung / Buat Room</button><button id="mpleave" hidden>Keluar Room (solo)</button><small>Pemain dengan kode room yang sama masuk ke dunia yang sama dan saling terlihat. Props, pintu &amp; entity tetap lokal per pemain.</small></div>
       <button id="sreset">Reset ke default</button>
     </div>
   </div>
 </div>
 <div id="dot"></div>
+<div id="mphud" style="display:none;position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:30;font:600 12px system-ui,sans-serif;color:#fff;background:rgba(0,0,0,.45);padding:4px 10px;border-radius:10px;pointer-events:none"></div>
 <button id="ibtn"><span>TAHAN<br>BUKA</span></button>
 <div id="cpanel" hidden>
   <div class="ch"><b>CONSOLE</b><button id="cclose">✕</button></div>
@@ -214,7 +221,18 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
   <div id="clist"></div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script>
+// ===== MULTIPLAYER (Firebase): kode room -> seed dunia yang sama untuk semua pemain =====
+const MP={code:null,name:'',seed:0};
+(function(){try{
+  const q=new URLSearchParams(location.search);
+  const c=(q.get('room')||'').trim().toUpperCase().replace(/[^A-Z0-9_-]/g,'').slice(0,20);
+  if(c){MP.code=c;let h=2166136261;for(const ch of c){h^=ch.charCodeAt(0);h=Math.imul(h,16777619)}MP.seed=(h>>>0)||1}
+  let n=q.get('name')||'';try{n=n||localStorage.getItem('dvg_name')||''}catch(e){}
+  MP.name=(n||('Pemain'+(100+(Math.random()*900|0)))).slice(0,14);
+}catch(e){}})();
 const canvas=document.getElementById('c');
 const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));
@@ -2131,7 +2149,12 @@ function decorRoom(R,i,kind,t0,gT,rw){
   if(m1)R.meshI.push(m1);if(m2)R.meshI.push(m2);
 }
 function dkFloor(rr){const v=0x58+Math.floor(rr()*0x1c);return((v-6)<<16)|(v<<8)|(v+12)}
-function buildRoom(i){
+function buildRoom(i){   // mode multiplayer: tiap ruangan dibangun dari seed (kode room + nomor ruangan) supaya semua pemain melihat dunia yang sama
+  if(!MP.seed)return buildRoom_(i);
+  const old=Math.random;Math.random=rngSeed((MP.seed^Math.imul(i+1,0x9E3779B1))>>>0);
+  try{if(i===0){pz.cnt=0;pz.gap=12+((Math.random()*4)|0)}return buildRoom_(i)}finally{Math.random=old}
+}
+function buildRoom_(i){
   const R={i,interior:true,dead:false,oi:[],og:[],meshI:[],meshG:[],lamps:[],door:null};
   const t0=RSTART(i),t1=t0+RLEN(i),gT=t1-WT,ts=i===0?-WT:t0,rw=RWR(i),rr=rngSeed((Math.random()*4294967296)>>>0);   // seed acak tiap ruangan
   const wc=isSafe(i)?0x1f3550:randWall(rr),fc=isSafe(i)?0x7d8797:dkFloor(rr);
@@ -3385,6 +3408,107 @@ for(const ev of ['pointerdown','keydown','touchstart'])addEventListener(ev,()=>s
   dp.addEventListener('pointerdown',e=>{e.stopPropagation();if(e.target===dp)dp.hidden=true});
 })();
 requestAnimationFrame(tick);
+// ===== LAYAR PENUH: sembunyikan address bar / bar browser (otomatis di sentuhan pertama, bisa dimatikan di SETTING) =====
+(function(){
+  const de=document.documentElement,btn=document.getElementById('fsbtn'),st=document.getElementById('fsst');
+  const isFs=()=>!!(document.fullscreenElement||document.webkitFullscreenElement);
+  const pref=()=>{try{return localStorage.getItem('dvg_fs')!=='0'}catch(e){return true}};
+  const setPref=v=>{try{localStorage.setItem('dvg_fs',v?'1':'0')}catch(e){}};
+  const upd=()=>{st.textContent=isFs()?'ON':'OFF'};
+  async function enter(){
+    try{const f=de.requestFullscreen||de.webkitRequestFullscreen;if(f){await f.call(de,{navigationUI:'hide'})}}catch(e){}
+    try{if(screen.orientation&&screen.orientation.lock)await screen.orientation.lock('landscape')}catch(e){}
+    upd();
+  }
+  function leave(){try{(document.exitFullscreen||document.webkitExitFullscreen).call(document)}catch(e){}try{screen.orientation&&screen.orientation.unlock&&screen.orientation.unlock()}catch(e){}}
+  btn.addEventListener('click',()=>{if(isFs()){setPref(false);leave()}else{setPref(true);enter()}});
+  document.addEventListener('fullscreenchange',upd);document.addEventListener('webkitfullscreenchange',upd);
+  const touch=matchMedia('(pointer:coarse)').matches||'ontouchstart' in window;
+  if(touch){
+    const once=()=>{if(pref()&&!isFs())enter();if(isFs()||!pref()){removeEventListener('touchend',once,true);removeEventListener('pointerup',once,true)}};
+    addEventListener('touchend',once,true);addEventListener('pointerup',once,true);
+  }
+  upd();
+})();
+// ===== MULTIPLAYER: Firebase Realtime Database (posisi pemain real time) =====
+(function(){
+  const FB_CFG={apiKey:'AIzaSyDG2PnJVNnjmZJ69gz8-9ieueinnRRM6Dc',authDomain:'divergent-49f16.firebaseapp.com',databaseURL:'https://divergent-49f16-default-rtdb.asia-southeast1.firebasedatabase.app',projectId:'divergent-49f16',storageBucket:'divergent-49f16.firebasestorage.app',messagingSenderId:'47640372930',appId:'1:47640372930:web:d87a69582cdaa37bc0bd5b'};   // config Firebase project divergent-49f16 (databaseURL = Realtime Database region Singapore)   // ISI dengan firebaseConfig milikmu (atau tempel lewat tombol di MENU > SETTING)
+  const st=document.getElementById('mpst'),hud=document.getElementById('mphud'),jb=document.getElementById('mpjoin'),lb=document.getElementById('mpleave');
+  const getCfg=()=>{if(FB_CFG.apiKey&&FB_CFG.databaseURL)return FB_CFG;try{const t=localStorage.getItem('dvg_fbcfg');return t?JSON.parse(t):null}catch(e){return null}};
+  jb.addEventListener('click',()=>{
+    let c=getCfg();
+    if(!c||!c.databaseURL){
+      const t=prompt('Tempel firebaseConfig dari Firebase Console (Project settings > Your apps). Harus ada databaseURL.');if(!t)return;
+      try{c=(new Function('return ('+t.replace(/^[^{]*/,'').replace(/[^}]*$/,'')+')'))();if(!c.apiKey||!c.databaseURL)throw 0;localStorage.setItem('dvg_fbcfg',JSON.stringify(c))}
+      catch(e){alert('Config tidak valid / databaseURL kosong.');return}
+    }
+    const code=prompt('Kode room (teman pakai kode yang sama = dunia sama):',MP.code||'');if(!code)return;
+    const nm=prompt('Nama kamu:',MP.name)||MP.name;try{localStorage.setItem('dvg_name',nm)}catch(e){}
+    location.search='?room='+encodeURIComponent(code)+'&name='+encodeURIComponent(nm);
+  });
+  lb.addEventListener('click',()=>{location.href=location.pathname});
+  if(!MP.code){st.textContent='OFFLINE';return}
+  lb.hidden=false;jb.textContent='Ganti Room';
+  const cfg=getCfg();
+  if(!cfg||!window.firebase){st.textContent='ERROR';alert(!window.firebase?'Firebase SDK gagal dimuat (cek internet).':'Firebase config belum diisi.');return}
+  let db;try{firebase.initializeApp(cfg);db=firebase.database()}catch(e){st.textContent='ERROR';alert('Firebase gagal init: '+e.message);return}
+  st.textContent='ROOM '+MP.code;hud.style.display='block';
+  const uid=Math.random().toString(36).slice(2,10),base=db.ref('dvg/'+MP.code+'/players'),me=base.child(uid);
+  me.onDisconnect().remove();
+  const R=new Map();
+  function mkRemote(id,name){
+    const col=new THREE.Color().setHSL((parseInt(id.slice(0,4),36)%360)/360,0.65,0.45).getHex();
+    const g=new THREE.Group(),tg=new THREE.Group();tg.position.set(0,3,0);
+    const hg=new THREE.Group();hg.position.set(0,1,0);
+    const fm=new THREE.Mesh(new THREE.PlaneGeometry(1.2,1.2),new THREE.MeshBasicMaterial({map:face.material.map,transparent:true}));fm.position.set(0,0.6,0.61);
+    hg.add(box(1.2,1.2,1.2,0xf5cd30,0,0.6,0),fm);
+    const aL=mkLimb(0xf5cd30,-1,0.5,-0.5,-0.5),aR=mkLimb(0xf5cd30,1,0.5,0.5,-0.5),lL=mkLimb(0xa2c429,-1,-1,0.5,-1),lR=mkLimb(0xa2c429,1,-1,-0.5,-1);
+    tg.add(box(2,2,1,col,0,0,0),hg,aL,aR,lL,lR);g.add(tg);
+    const cv=document.createElement('canvas');cv.width=256;cv.height=64;const x=cv.getContext('2d');
+    x.font='bold 30px sans-serif';x.textAlign='center';x.fillStyle='rgba(0,0,0,.55)';x.fillRect(0,8,256,48);x.fillStyle='#fff';x.fillText(name,128,43);
+    const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),transparent:true,depthTest:false}));sp.scale.set(5,1.25,1);sp.position.set(0,6.8,0);sp.renderOrder=999;g.add(sp);
+    g.visible=false;scene.add(g);
+    return{g,tg,aL,aR,lL,lR,x:0,y:0,z:0,yaw:0,tx:0,ty:0,tz:0,tyaw:0,sl:0,cr:0,ph:0,first:true,seen:performance.now(),sp};
+  }
+  const onUp=s=>{
+    const v=s.val();if(!v||s.key===uid)return;
+    let r=R.get(s.key);if(!r){r=mkRemote(s.key,String(v.n||'?').slice(0,14));R.set(s.key,r)}
+    r.tx=+v.x||0;r.ty=+v.y||0;r.tz=+v.z||0;r.tyaw=+v.r||0;r.sl=v.s;r.cr=v.c;r.seen=performance.now();
+  };
+  base.on('child_added',onUp);base.on('child_changed',onUp);
+  base.on('child_removed',s=>{const r=R.get(s.key);if(!r)return;scene.remove(r.g);R.delete(s.key)});
+  // kirim posisi ~10x/detik (+ heartbeat tiap 1 detik kalau diam)
+  const _q=new THREE.Quaternion(),_f=new THREE.Vector3();let lastSend=0,lx=1e9,lz=1e9,ly=1e9,lyaw=1e9;
+  setInterval(()=>{
+    const p=player.position,now=performance.now();
+    torsoG.getWorldQuaternion(_q);_f.set(0,0,1).applyQuaternion(_q);const yaw=Math.atan2(_f.x,_f.z);
+    const moved=Math.abs(p.x-lx)+Math.abs(p.z-lz)+Math.abs(p.y-ly)>0.05||Math.abs(yaw-lyaw)>0.05;
+    if(!moved&&now-lastSend<1000)return;
+    lastSend=now;lx=p.x;lz=p.z;ly=p.y;lyaw=yaw;
+    me.set({n:MP.name,x:+p.x.toFixed(2),y:+p.y.toFixed(2),z:+p.z.toFixed(2),r:+yaw.toFixed(2),s:sliding?1:0,c:crouching?1:0}).catch(()=>{});
+  },100);
+  addEventListener('beforeunload',()=>{try{me.remove()}catch(e){}});
+  let lt=performance.now(),hudT=0;
+  (function loop(now){
+    requestAnimationFrame(loop);
+    const dt=Math.min(0.1,(now-lt)/1000);lt=now;const pp=player.position;let n=1;
+    for(const r of R.values()){
+      const stale=now-r.seen>15000;
+      if(r.first||Math.hypot(r.tx-r.x,r.tz-r.z)>30){r.x=r.tx;r.y=r.ty;r.z=r.tz;r.yaw=r.tyaw;r.first=false}
+      const k=Math.min(1,dt*12),ox=r.x,oz=r.z;
+      r.x+=(r.tx-r.x)*k;r.y+=(r.ty-r.y)*k;r.z+=(r.tz-r.z)*k;
+      let dy=r.tyaw-r.yaw;dy-=PI2*Math.round(dy/PI2);r.yaw+=dy*k;
+      const sp=dt>0?Math.hypot(r.x-ox,r.z-oz)/dt:0;r.ph+=Math.min(sp,40)*dt*0.5;
+      const sw=Math.min(1,sp/6)*0.9,s=Math.sin(r.ph)*sw;
+      r.lL.rotation.x=s;r.lR.rotation.x=-s;r.aL.rotation.x=-s;r.aR.rotation.x=s;
+      r.tg.position.y=r.sl?1.8:(r.cr?2.2:3);r.tg.rotation.x=r.sl?-1.0:0;
+      r.g.position.set(r.x,r.y,r.z);r.g.rotation.y=r.yaw;
+      r.g.visible=!stale&&Math.hypot(r.x-pp.x,r.z-pp.z)<170;
+      if(!stale)n++;
+    }
+    hudT-=dt;if(hudT<=0){hudT=0.5;hud.textContent='ONLINE  ROOM '+MP.code+'  '+n+' pemain'}
+  })(performance.now());
+})();
 </script>
 </body>
 </html>
